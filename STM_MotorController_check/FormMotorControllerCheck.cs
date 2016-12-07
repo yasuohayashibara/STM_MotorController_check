@@ -22,6 +22,8 @@ namespace STM_MotorController_check
             InitializeComponent();
             serialPort.Open();
             serialPort.ReadTimeout = 5;
+            System.IO.StreamWriter sw = new System.IO.StreamWriter(@"data.csv", false);
+            sw.Close();
         }
 
         private void buttonServoOn_Click(object sender, EventArgs e)
@@ -29,7 +31,8 @@ namespace STM_MotorController_check
             byte[] parameter = new byte[3 * 14];
             if (isServoOn)
             {
-                for(int i = 0; i < 14; i++){
+//                for(int i = 0; i < 14; i++){
+                for(int i = 0; i < 1; i++){
                     parameter[i * 3] = (byte)(i + 1);
                     parameter[i * 3 + 1] = 0x01;
                 }
@@ -38,7 +41,8 @@ namespace STM_MotorController_check
             }
             else
             {
-                for(int i = 0; i < 14; i++){
+//                for(int i = 0; i < 14; i++){
+                for(int i = 0; i < 1; i++){
                     parameter[i * 3] = (byte)(i + 1);
                 }
                 textBoxServoOn.Text = "ON";
@@ -180,7 +184,7 @@ namespace STM_MotorController_check
         private void timer1_Tick(object sender, EventArgs e)
         {
             
-            if (step >= 50)
+/*            if (step >= 50)
             {
                 if (target == 0) target = 500;
                 else target = 0;
@@ -198,9 +202,27 @@ namespace STM_MotorController_check
                     MessageBox.Show("サーボへのコマンドの送信に失敗しました．");
                     Close();
                 }
-            }
+            }*/
 
-            if (step > 0){
+
+            if ((step & 1) == 0)
+            {
+                target = (int)(500 * Math.Sin(2.0 * Math.PI * step / 100 * 4));
+                byte[] cmd = B3MLib.B3MLib.WriteSingle(
+                    0,
+                    B3MLib.B3MLib.SERVO_DESIRED_POSITION,
+                    1,
+                    new byte[] { (byte)(target & 0xff), (byte)(target >> 8) }
+                );
+                if (B3MLib.B3MLib.Synchronize(serialPort, cmd) == false)
+                {
+                    textBox1.Text += "サーボへのコマンドの送信に失敗しました．\r\n";
+                }
+            }
+ 
+            if ((step & 1) == 1)
+            if (step > 0)
+            {
                 byte[] rx = new byte[7];
                 byte[] cmd = B3MLib.B3MLib.Read(
                     0,
@@ -210,24 +232,21 @@ namespace STM_MotorController_check
                 );
                 if (B3MLib.B3MLib.Synchronize(serialPort, cmd, ref rx) == false)
                 {
-                    textBox1.Text += "サーボへのコマンドの送信に失敗しました．\r\n";
-//                    MessageBox.Show("サーボへのコマンドの送信に失敗しました．");
-//                    Close();
-
+                    textBox1.Text += "サーボへのコマンドの受信に失敗しました．\r\n";
+                    return;
                 }
-//                short angle = (short)Extensions.Converter.ByteConverter.ByteArrayToInt16(rx[4], rx[5]);
-
-/*                {
+                short angle = (short)Extensions.Converter.ByteConverter.ByteArrayToInt16(rx[4], rx[5]);
+                {
                     System.IO.StreamWriter sw = new System.IO.StreamWriter(@"data.csv", true);
                     sw.Write(count * 0.01);
                     sw.Write(", ");
                     sw.Write(target);
                     sw.Write(", ");
-                    sw.Write(angle-11200);
+                    sw.Write(angle - 10270);
                     sw.Write("\r\n");
                     sw.Close();
                     count++;
-                }*/
+                }
             }
             step++;
         }
